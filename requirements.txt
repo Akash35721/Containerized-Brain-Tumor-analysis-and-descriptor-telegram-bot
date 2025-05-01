@@ -1,0 +1,5 @@
+# requirements.txt
+ollama
+python-telegram-bot[ext]
+ultralytics
+Pillow

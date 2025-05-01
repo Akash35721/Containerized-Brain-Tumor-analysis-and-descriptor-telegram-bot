@@ -1,0 +1,55 @@
+# docker-compose.yml
+version: '3.8'
+
+services:
+  ollama:
+    image: ollama/ollama:latest
+    container_name: ollama-service # A fixed name for easy reference
+    restart: unless-stopped
+    volumes:
+      - ollama_data:/root/.ollama # Persist downloaded models
+    networks:
+      - app_network
+    #--- Optional: Expose Ollama port to host (for debugging/direct access) ---
+    ports:
+      - "11434:11434"
+    #--- Optional: UNCOMMENT BELOW FOR NVIDIA GPU SUPPORT ---
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              # count: 1 # Or 'all'
+              capabilities: [gpu]
+
+  bot:
+    build: . # Tells Compose to build the image using the Dockerfile in the current directory
+    container_name: brain-tumor-bot-service
+    restart: unless-stopped
+    environment:
+      # Reads variables from the host environment or a .env file
+      - TELEGRAM_BOT_TOKEN=${TELEGRAM_BOT_TOKEN}
+      - OLLAMA_HOST=http://ollama:11434 # Connects to the 'ollama' service name over the Docker network
+      - OLLAMA_MODEL=${OLLAMA_MODEL:-gemma3:latest} # Uses host/env variable, defaults to gemma3
+      - YOLO_MODEL_PATH=/app/models/best.pt # The path *inside* the container where the model will be
+      - YOLO_CONF_THRESHOLD=${YOLO_CONF_THRESHOLD:-0.70} # Uses host/env variable, defaults to 0.70
+      - PYTHONUNBUFFERED=1
+    volumes:
+      # Mounts your local 'models' directory into the container at '/app/models'
+      # This is often preferred over COPY in Dockerfile for models, as it doesn't rebuild the image if the model changes.
+      # The ':ro' makes it read-only inside the container, which is safer.
+      - ./models:/app/models:ro
+      # Optional: Mount code for development ease (reflects changes without rebuild)
+      # Remove this line for production builds where code shouldn't change.
+      # - ./app.py:/app/app.py
+    networks:
+      - app_network
+    depends_on:
+      - ollama # Ensures ollama service starts before the bot attempts to connect
+
+networks:
+  app_network: # Defines the shared network
+    driver: bridge
+
+volumes:
+  ollama_data: # Defines the named volume for Ollama model persistence
