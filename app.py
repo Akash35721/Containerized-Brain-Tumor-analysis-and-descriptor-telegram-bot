@@ -244,7 +244,7 @@ Do not attempt to definitively diagnose. Focus solely on describing the visual i
                             'images': [temp_annotated_path] # Pass the path to the temp annotated file
                         }
                     ],
-                    options={'temperature': 0.3}
+                    options={'temperature': 0.3}    #<<==========================================================TEMPERATURE
                 )
                 explanation = response['message']['content']
                 logger.info("Ollama analysis successful.")
